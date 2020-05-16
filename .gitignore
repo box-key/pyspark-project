@@ -4,3 +4,11 @@
 
 # Large file
 data/
+
+
+# byte codes
+__pycache__/
+
+
+# test files
+.putest_cache/
