@@ -1,0 +1,6 @@
+# jupyter notebooks
+.ipynb_checkpoints/
+
+
+# Large file
+data/
