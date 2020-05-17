@@ -177,4 +177,37 @@ class TestPySpark:
         for r, e in zip(res, expected):
             assert r == e
 
-    # def test_output
+    def fill_zer0(self, row):
+        expected = {2015: 0, 2016:0, 2017:0, 2018:0, 2019:0}
+        for x in row:
+            expected[x[0]] += x[1]
+        expected = [(k, v) for k, v in expected.items()]
+        return expected
+
+    def test_output(self):
+        """ Test the final output given by method """
+        file = 'segmentid_fiscalyear_dummy.csv'
+        # to skip header
+        data = sc.textFile(file)
+        header = data.first()
+        # return coefficient
+        res = sc.textFile(file) \
+                .filter(lambda x: x != header) \
+                .mapPartitions(lambda x: csv.reader(x)) \
+                .map(lambda x: ((x[0], dt.datetime.strptime(x[1], '%m/%d/%Y').year), 1)) \
+                .reduceByKey(lambda x, y: x + y) \
+                .sortByKey(True, 1) \
+                .map(lambda x: (x[0][0], [(x[0][1], x[1])])) \
+                .reduceByKey(lambda x, y: x + y) \
+                .mapValues(lambda x: self.fill_zer0(x) + [('OLS_COEF', self.ols(x))]) \
+                .collect()
+        expected = [('1000',
+                     [(2015, 0), (2016, 0), (2017, 0), (2018, 2), (2019, 3), ('OLS_COEF', 1.0)]),
+                    ('2000',
+                     [(2015, 0), (2016, 1), (2017, 2), (2018, 0), (2019, 0), ('OLS_COEF', 1.0)]),
+                    ('3000',
+                     [(2015, 0), (2016, 1), (2017, 2), (2018, 3), (2019, 0), ('OLS_COEF', 1.0)]),
+                    ('4000',
+                     [(2015, 0), (2016, 0), (2017, 3), (2018, 2), (2019, 1), ('OLS_COEF', -1.0)])]
+        for r, e in zip(res, expected):
+            assert r == e
