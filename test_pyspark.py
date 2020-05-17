@@ -69,7 +69,12 @@ def street_segmentid_lookup(v_record, physicalID_list):
     return -1
 
 
-class TestMapping:
+# initialize pyspark
+from pyspark import SparkContext
+sc = SparkContext()
+
+
+class TestPySpark:
 
     def test_preprocess(self):
         """ Test the process of input data to assigning segment IDs. """
@@ -105,3 +110,71 @@ class TestMapping:
         # filter out samples with unknonwn street segment
         id_assigned = list(filter(lambda x: int(x['PHYSICALID']) > 0, id_assigned))
         assert len(id_assigned) == 49
+
+    def test_mapping(self):
+        """
+        Test mapping preprocessed data by segment id and fiscal year using
+        dummy data.
+        """
+        file = 'segmentid_fiscalyear_dummy.csv'
+        # to skip header
+        data = sc.textFile(file)
+        header = data.first()
+        # start computation
+        res = sc.textFile(file) \
+                .filter(lambda x: x != header) \
+                .mapPartitions(lambda x: csv.reader(x)) \
+                .map(lambda x: ((x[0], dt.datetime.strptime(x[1], '%m/%d/%Y').year), 1)) \
+                .reduceByKey(lambda x, y: x + y) \
+                .sortByKey(True, 1) \
+                .collect()
+        expected = [(('1000', 2018), 2),
+                     (('1000', 2019), 3),
+                     (('2000', 2016), 1),
+                     (('2000', 2017), 2),
+                     (('3000', 2016), 1),
+                     (('3000', 2017), 2),
+                     (('3000', 2018), 3),
+                     (('4000', 2017), 3),
+                     (('4000', 2018), 2),
+                     (('4000', 2019), 1)]
+        for r, e in zip(res, expected):
+            assert r == e
+
+    def ols(self, data):
+        """ data = [(x1, y1), ..., (xi, yi), ..., (xN, yN)] """
+        x_bar = sum([d[0] for d in data])/len(data)
+        y_bar = sum([d[1] for d in data])/len(data)
+        numerator = sum([(d[0] - x_bar)*(d[1] - y_bar) for d in data])
+        denomenator = sum([(d[0] - x_bar)**2 for d in data])
+        return numerator/denomenator
+
+    def test_ols(self):
+        """ Test ols function """
+        data = [(2015, 100), (2016, 200), (2017, 300), (2018, 400), (2019, 500)]
+        assert self.ols(data) == 100
+        data = [(2015, 500), (2016, 400), (2017, 300), (2018, 200), (2019, 100)]
+        assert self.ols(data) == -100
+
+    def test_ols_computation(self):
+        """ Test computing ols coefficient for each street segment """
+        file = 'segmentid_fiscalyear_dummy.csv'
+        # to skip header
+        data = sc.textFile(file)
+        header = data.first()
+        # return coefficient
+        res = sc.textFile(file) \
+                .filter(lambda x: x != header) \
+                .mapPartitions(lambda x: csv.reader(x)) \
+                .map(lambda x: ((x[0], dt.datetime.strptime(x[1], '%m/%d/%Y').year), 1)) \
+                .reduceByKey(lambda x, y: x + y) \
+                .sortByKey(True, 1) \
+                .map(lambda x: (x[0][0], [(x[0][1], x[1])])) \
+                .reduceByKey(lambda x, y: x + y) \
+                .mapValues(lambda x: self.ols(x)) \
+                .collect()
+        expected = [('1000', 1.0), ('2000', 1.0), ('3000', 1.0), ('4000', -1.0)]
+        for r, e in zip(res, expected):
+            assert r == e
+
+    # def test_output
