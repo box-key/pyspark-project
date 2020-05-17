@@ -216,7 +216,7 @@ class TestPySpark:
                 .map(lambda x: (x[0], street_segmentid_lookup(x[2], x[3], x[1], lookup))) \
                 .filter(lambda x: int(x[1]) > 0) \
                 .collect()
-        assert len(res) == 49
+        assert len(res) == 4
 
     def test_mapping(self):
         """
@@ -321,3 +321,38 @@ class TestPySpark:
                      [(2015, 0), (2016, 0), (2017, 3), (2018, 2), (2019, 1), ('OLS_COEF', -1.0)])]
         for r, e in zip(res, expected):
             assert r == e
+
+    def test_whole_process(self):
+        """ Combine all processes in one program """
+        # load lookup table
+        with open('data\\nyc_cscl.csv', 'r') as f:
+            file = csv.DictReader(f)
+            lookup = [row for row in file]
+        file = 'violation_small.csv'
+        # to skip header
+        data = sc.textFile(file)
+        header = data.first()
+        # start computation
+        res = sc.textFile(file) \
+                .filter(lambda x: x != header) \
+                .mapPartitions(lambda x: csv.reader(x)) \
+                .map(lambda x: (int(dt.datetime.strptime(x[4], '%m/%d/%Y').year), x[21], x[23], x[24])) \
+                .filter(lambda x: (2015 <= x[0] and x[0] <= 2019)) \
+                .map(lambda x: (x[0], countyname2borocode(x[1]), x[2], x[3])) \
+                .filter(lambda x: x[1] > 0) \
+                .map(lambda x: (x[0], street_segmentid_lookup(x[2], x[3], x[1], lookup))) \
+                .filter(lambda x: int(x[1]) > 0) \
+                .map(lambda x: ((x[1], x[0]), 1)) \
+                .reduceByKey(lambda x, y: x + y) \
+                .sortByKey(True, 1) \
+                .map(lambda x: (x[0][0], [(x[0][1], x[1])])) \
+                .reduceByKey(lambda x, y: x + y) \
+                .mapValues(lambda x: self.fill_zer0(x) + [('OLS_COEF', self.ols(x))]) \
+                .collect()
+        # count the number of total violations
+        count = 0
+        for segment in res:
+            for year in segment[1]:
+                if year[0] != 'OLS_COEF':
+                    count += year[1]
+        assert count == 49
