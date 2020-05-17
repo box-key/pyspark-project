@@ -434,4 +434,8 @@ class TestPySpark:
             for year in segment[1]:
                 if year[0] != 'OLS_COEF':
                     count += year[1]
-        print(count)
+        assert count == 76
+
+    def export_csv(self):
+        """ Export output in csv format """
+        
