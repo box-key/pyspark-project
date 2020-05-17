@@ -55,7 +55,7 @@ def countyname2borocode(county_name):
         return -1
 
 
-def street_segmentid_lookup(v_record, physicalID_list):
+def street_segmentid_lookup_py(v_record, physicalID_list):
     for segment in physicalID_list:
         street = v_record['Street Name'].lower()
         # print(type(int(segment['BOROCODE'])), type(v_record['Violation County']))
@@ -68,6 +68,19 @@ def street_segmentid_lookup(v_record, physicalID_list):
     # returns -1 if there is no match
     return -1
 
+def street_segmentid_lookup(HN, STREET_NAME, BOROCODE, physicalID_list):
+    for segment in physicalID_list:
+        street = STREET_NAME.lower()
+        # print(type(int(segment['BOROCODE'])), type(v_record['Violation County']))
+        # first check county code and street name
+        if (BOROCODE == int(segment['BOROCODE'])) and \
+           ((street == segment['FULL_STREE'].lower()) or (street == segment['ST_LABEL'].lower())):
+           # then, check house number: odd number is stored in left
+           if match_house_number(HN, segment):
+                return segment['PHYSICALID']
+    # returns -1 if there is no match
+    return -1
+
 
 # initialize pyspark
 from pyspark import SparkContext
@@ -76,7 +89,7 @@ sc = SparkContext()
 
 class TestPySpark:
 
-    def test_preprocess(self):
+    def test_python_preprocess(self):
         """ Test the process of input data to assigning segment IDs. """
         # load lookup table
         with open('data\\nyc_cscl.csv', 'r') as f:
@@ -103,13 +116,107 @@ class TestPySpark:
         # assign street segment id to each sample
         id_assigned = []
         for row in borocode_converted:
-            id = street_segmentid_lookup(row, lookup)
+            id = street_segmentid_lookup_py(row, lookup)
             row.update({"PHYSICALID":id})
             id_assigned.append(row)
         assert len(id_assigned) == 63
         # filter out samples with unknonwn street segment
         id_assigned = list(filter(lambda x: int(x['PHYSICALID']) > 0, id_assigned))
         assert len(id_assigned) == 49
+
+    def test_loading(self):
+        """
+        Test the process of input data to assigning segment IDs.
+        Before Mapping:
+        - Issue Date @ index 4
+        - Violation County @ index 21
+        - House Number @ index 23
+        - Street Name @ index 24
+
+        After Mapping:
+        - Issue Date @ index 0
+        - Violation County (Borocode) @ index 1
+        - House Number @ index 2
+        - Street Name @ index 3
+        """
+        file = 'violation_small.csv'
+        # skip headers
+        data = sc.textFile(file)
+        header = data.first()
+        # load violation records
+        res = sc.textFile(file) \
+                .filter(lambda x: x != header) \
+                .mapPartitions(lambda x: csv.reader(x)) \
+                .map(lambda x: (int(dt.datetime.strptime(x[4], '%m/%d/%Y').year), x[21], x[23], x[24])) \
+                .filter(lambda x: (2015 <= x[0] and x[0] <= 2019)) \
+                .collect()
+        assert len(res) == 76
+
+    def test_borocode(self):
+        """
+        Test loading data -> assigning borocode -> filter empty data
+
+        Before Mapping:
+        - Issue Date @ index 4
+        - Violation County @ index 21
+        - House Number @ index 23
+        - Street Name @ index 24
+
+        After Mapping:
+        - Issue Date @ index 0
+        - Violation County (Borocode) @ index 1
+        - House Number @ index 2
+        - Street Name @ index 3
+        """
+        file = 'violation_small.csv'
+        # skip headers
+        data = sc.textFile(file)
+        header = data.first()
+        # load data
+        res = sc.textFile(file) \
+                .filter(lambda x: x != header) \
+                .mapPartitions(lambda x: csv.reader(x)) \
+                .map(lambda x: (int(dt.datetime.strptime(x[4], '%m/%d/%Y').year), x[21], x[23], x[24])) \
+                .filter(lambda x: (2015 <= x[0] and x[0] <= 2019)) \
+                .map(lambda x: (x[0], countyname2borocode(x[1]), x[2], x[3])) \
+                .filter(lambda x: x[1] > 0) \
+                .collect()
+        assert len(res) == 63
+
+    def test_id_assignment(self):
+        """
+        Test loading data -> assigning street id -> filter out unknown data
+
+        Before Mapping:
+        - Issue Date @ index 4
+        - Violation County @ index 21
+        - House Number @ index 23
+        - Street Name @ index 24
+
+        After Mapping:
+        - Issue Year @ index 0
+        - Street Segment ID @ index 1
+        """
+        # load lookup table
+        with open('data\\nyc_cscl.csv', 'r') as f:
+            file = csv.DictReader(f)
+            lookup = [row for row in file]
+        file = 'violation_small.csv'
+        # skip headers
+        data = sc.textFile(file)
+        header = data.first()
+        # load data
+        res = sc.textFile(file) \
+                .filter(lambda x: x != header) \
+                .mapPartitions(lambda x: csv.reader(x)) \
+                .map(lambda x: (int(dt.datetime.strptime(x[4], '%m/%d/%Y').year), x[21], x[23], x[24])) \
+                .filter(lambda x: (2015 <= x[0] and x[0] <= 2019)) \
+                .map(lambda x: (x[0], countyname2borocode(x[1]), x[2], x[3])) \
+                .filter(lambda x: x[1] > 0) \
+                .map(lambda x: (x[0], street_segmentid_lookup(x[2], x[3], x[1], lookup))) \
+                .filter(lambda x: int(x[1]) > 0) \
+                .collect()
+        assert len(res) == 49
 
     def test_mapping(self):
         """
