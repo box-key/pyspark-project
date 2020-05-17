@@ -7,7 +7,7 @@ import datetime as dt
 import re
 
 
-class TestMethods:
+class TestPreprocessing:
 
     def test_year_filter(self):
         """
