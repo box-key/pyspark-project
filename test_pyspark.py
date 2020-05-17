@@ -147,7 +147,10 @@ class TestPySpark:
         y_bar = sum([d[1] for d in data])/len(data)
         numerator = sum([(d[0] - x_bar)*(d[1] - y_bar) for d in data])
         denomenator = sum([(d[0] - x_bar)**2 for d in data])
-        return numerator/denomenator
+        if denomenator == 0:
+            return 0
+        else:
+            return numerator/denomenator
 
     def test_ols(self):
         """ Test ols function """
