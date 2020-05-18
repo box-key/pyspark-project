@@ -436,6 +436,93 @@ class TestPySpark:
                     count += year[1]
         assert count == 76
 
-    def export_csv(self):
+    def export_csv(self, output):
         """ Export output in csv format """
-        
+        # build lookup table with counts
+        with open('data\\nyc_cscl.csv', 'r') as f:
+            file = csv.DictReader(f)
+            physicalIDs = {}
+            for row in file:
+                id = int(row['PHYSICALID'])
+                physicalIDs.update({id:[0, 0, 0, 0, 0, 0]})
+        # assign the count in output
+        for out in output:
+            try:
+                lookup = int(out[0])
+                for idx in range(6):
+                    physicalIDs[lookup][idx] = out[1][idx][1]
+            except KeyError:
+                pass
+        # export the resutl as csv
+        with open('temp.csv', 'w', newline='\n') as f:
+            writer = csv.writer(f)
+            for k, v in physicalIDs.items():
+                writer.writerow([k] + v)
+
+
+    def test_export_csv(self):
+        """ Test code blocks for export_csv """
+        with open('data\\nyc_cscl.csv', 'r') as f:
+            file = csv.DictReader(f)
+            physicalIDs = {}
+            temp = []
+            for row in file:
+                id = int(row['PHYSICALID'])
+                physicalIDs.update({id:[0, 0, 0, 0, 0, 0]})
+                temp.append(id)
+        assert len(set(temp)) == len(physicalIDs)
+        output = [('101337',
+                   [(2015, 0), (2016, 0), (2017, 1), (2018, 0), (2019, 0), ('OLS_COEF', 0)]),
+                  ('1124',
+                   [(2015, 1), (2016, 1), (2017, 0), (2018, 1), (2019, 0), ('OLS_COEF', 0)]),
+                  ('11771',
+                   [(2015, 0), (2016, 0), (2017, 0), (2018, 0), (2019, 0), ('OLS_COEF', 0)]),
+                  ('12419',
+                   [(2015, 1), (2016, 2), (2017, 3), (2018, 4), (2019, 5), ('OLS_COEF', 1)])]
+        # assign the count in output
+        for out in output:
+            try:
+                lookup = int(out[0])
+                for idx in range(6):
+                    physicalIDs[lookup][idx] = out[1][idx][1]
+            except KeyError:
+                assert False
+        assert sum(physicalIDs[101337]) == 1
+        assert sum(physicalIDs[1124]) == 3
+        assert sum(physicalIDs[11771]) == 0
+        assert physicalIDs[12419][5] == 1
+        # export csv
+        self.export_csv(output)
+
+    def test_computation_and_export_csv(self):
+        """ Compute output and export it to csv """
+        # load lookup table
+        with open('data\\nyc_cscl.csv', 'r') as f:
+            file = csv.DictReader(f)
+            lookup = [row for row in file]
+        # broadcast lookup table
+        lookup_bcast = sc.broadcast(lookup)
+        root = 'test'
+        files = [os.path.join(root, 'violation_small1.csv'),
+                 os.path.join(root, 'violation_small1.csv')]
+        # skip headers
+        data = sc.textFile(','.join(files))
+        header = data.first()
+        # load data
+        res = sc.textFile(','.join(files)) \
+                .filter(lambda x: x != header) \
+                .mapPartitions(lambda x: csv.reader(x)) \
+                .map(lambda x: (int(dt.datetime.strptime(x[4], '%m/%d/%Y').year), x[21], x[23], x[24])) \
+                .filter(lambda x: (2015 <= x[0] and x[0] <= 2019)) \
+                .map(lambda x: (x[0], countyname2borocode(x[1]), x[2], x[3])) \
+                .filter(lambda x: x[1] > 0) \
+                .map(lambda x: (x[0], street_segmentid_lookup(x[2], x[3], x[1], lookup_bcast.value))) \
+                .filter(lambda x: int(x[1]) > 0) \
+                .map(lambda x: ((x[1], x[0]), 1)) \
+                .reduceByKey(lambda x, y: x + y) \
+                .sortByKey(True, 1) \
+                .map(lambda x: (x[0][0], [(x[0][1], x[1])])) \
+                .reduceByKey(lambda x, y: x + y) \
+                .mapValues(lambda x: self.fill_zer0(x) + [('OLS_COEF', self.ols(x))]) \
+                .collect()
+        self.export_csv(res)
