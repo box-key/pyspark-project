@@ -80,7 +80,7 @@ def street_segmentid_lookup(HN, STREET_NAME, BOROCODE, physicalID_list):
     return -1
 
 
-def export_csv(self, output):
+def export_csv(output):
     """ Export output in csv format """
     # build lookup table with counts
     with open(NYC_CSCL_PATH, 'r') as f:
@@ -102,6 +102,25 @@ def export_csv(self, output):
         writer = csv.writer(f)
         for k, v in physicalIDs.items():
             writer.writerow([k] + v)
+
+def ols(data):
+    """ data = [(x1, y1), ..., (xi, yi), ..., (xN, yN)] """
+    x_bar = sum([d[0] for d in data])/len(data)
+    y_bar = sum([d[1] for d in data])/len(data)
+    numerator = sum([(d[0] - x_bar)*(d[1] - y_bar) for d in data])
+    denomenator = sum([(d[0] - x_bar)**2 for d in data])
+    if denomenator == 0:
+        return 0
+    else:
+        return numerator/denomenator
+
+
+def fill_zer0(row):
+    expected = {2015: 0, 2016:0, 2017:0, 2018:0, 2019:0}
+    for x in row:
+        expected[x[0]] += x[1]
+    expected = [(k, v) for k, v in expected.items()]
+    return expected
 
 
 if __name__ == '__main__':
