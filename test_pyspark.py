@@ -458,11 +458,12 @@ class TestPySpark:
                     physicalIDs[lookup][idx] = out[1][idx][1]
             except KeyError:
                 pass
+
         # export the resutl as csv
         with open('temp.csv', 'w', newline='\n') as f:
             writer = csv.writer(f)
-            for k, v in physicalIDs.items():
-                writer.writerow([k] + v)
+            for key in sorted(physicalIDs.keys()):
+                writer.writerow([key] + physicalIDs[key])
 
 
     def test_export_csv(self):

@@ -100,8 +100,8 @@ def export_csv(output):
     # export the resutl as csv
     with open('temp.csv', 'w', newline='\n') as f:
         writer = csv.writer(f)
-        for k, v in physicalIDs.items():
-            writer.writerow([k] + v)
+        for key in sorted(physicalIDs.keys()):
+            writer.writerow([key] + physicalIDs[key])
 
 def ols(data):
     """ data = [(x1, y1), ..., (xi, yi), ..., (xN, yN)] """
