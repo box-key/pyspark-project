@@ -8,9 +8,10 @@ import os
 
 def match_house_number(hn_record, segment):
     # exclude single character house numbers
-    if not hn_record.isnumeric():
+    if len(hn_record) == 1 and (not hn_record.isnumeric()):
         return False
-    if len(hn_record) == 1:
+    # exlude cases like 789A
+    if (hn_record.find('-') == -1) and (not hn_record.isnumeric()):
         return False
     # if a record is empty, assigns 0
     if len(hn_record) == 0:
@@ -99,7 +100,7 @@ class TestPySpark:
             file = csv.DictReader(f)
             lookup = [row for row in file]
         # load violation records
-        with open('violation_small.csv', 'r') as f:
+        with open('test\\violation_small.csv', 'r') as f:
             file = csv.DictReader(f)
             # only keep records betwen 2015 and 2019
             filtered_records = \
@@ -142,7 +143,7 @@ class TestPySpark:
         - House Number @ index 2
         - Street Name @ index 3
         """
-        file = 'violation_small.csv'
+        file = 'test\\violation_small.csv'
         # skip headers
         data = sc.textFile(file)
         header = data.first()
@@ -171,7 +172,7 @@ class TestPySpark:
         - House Number @ index 2
         - Street Name @ index 3
         """
-        file = 'violation_small.csv'
+        file = 'test\\violation_small.csv'
         # skip headers
         data = sc.textFile(file)
         header = data.first()
@@ -204,7 +205,7 @@ class TestPySpark:
         with open('data\\nyc_cscl.csv', 'r') as f:
             file = csv.DictReader(f)
             lookup = [row for row in file]
-        file = 'violation_small.csv'
+        file = 'test\\violation_small.csv'
         # skip headers
         data = sc.textFile(file)
         header = data.first()
@@ -219,14 +220,14 @@ class TestPySpark:
                 .map(lambda x: (x[0], street_segmentid_lookup(x[2], x[3], x[1], lookup))) \
                 .filter(lambda x: int(x[1]) > 0) \
                 .collect()
-        assert len(res) == 4
+        assert len(res) == 49
 
     def test_mapping(self):
         """
         Test mapping preprocessed data by segment id and fiscal year using
         dummy data.
         """
-        file = 'segmentid_fiscalyear_dummy.csv'
+        file = 'test\\segmentid_fiscalyear_dummy.csv'
         # to skip header
         data = sc.textFile(file)
         header = data.first()
@@ -271,7 +272,7 @@ class TestPySpark:
 
     def test_ols_computation(self):
         """ Test computing ols coefficient for each street segment """
-        file = 'segmentid_fiscalyear_dummy.csv'
+        file = 'test\\segmentid_fiscalyear_dummy.csv'
         # to skip header
         data = sc.textFile(file)
         header = data.first()
@@ -279,6 +280,7 @@ class TestPySpark:
         res = sc.textFile(file) \
                 .filter(lambda x: x != header) \
                 .mapPartitions(lambda x: csv.reader(x)) \
+                .filter(lambda x: len(x) == 43) \
                 .map(lambda x: ((x[0], dt.datetime.strptime(x[1], '%m/%d/%Y').year), 1)) \
                 .reduceByKey(lambda x, y: x + y) \
                 .sortByKey(True, 1) \
@@ -299,7 +301,7 @@ class TestPySpark:
 
     def test_output(self):
         """ Test the final output given by method """
-        file = 'segmentid_fiscalyear_dummy.csv'
+        file = 'test\\segmentid_fiscalyear_dummy.csv'
         # to skip header
         data = sc.textFile(file)
         header = data.first()
@@ -331,7 +333,7 @@ class TestPySpark:
         with open('data\\nyc_cscl.csv', 'r') as f:
             file = csv.DictReader(f)
             lookup = [row for row in file]
-        file = 'violation_small.csv'
+        file = 'test\\violation_small.csv'
         # to skip header
         data = sc.textFile(file)
         header = data.first()
@@ -339,6 +341,7 @@ class TestPySpark:
         res = sc.textFile(file) \
                 .filter(lambda x: x != header) \
                 .mapPartitions(lambda x: csv.reader(x)) \
+                .filter(lambda x: len(x) >= 25) \
                 .map(lambda x: (int(dt.datetime.strptime(x[4], '%m/%d/%Y').year), x[21], x[23], x[24])) \
                 .filter(lambda x: (2015 <= x[0] and x[0] <= 2019)) \
                 .map(lambda x: (x[0], countyname2borocode(x[1]), x[2], x[3])) \
@@ -368,7 +371,7 @@ class TestPySpark:
             lookup = [row for row in file]
         # broadcast lookup table
         lookup_bcast = sc.broadcast(lookup)
-        file = 'violation_small.csv'
+        file = 'test\\violation_small.csv'
         # skip headers
         data = sc.textFile(file)
         header = data.first()
@@ -376,6 +379,7 @@ class TestPySpark:
         res = sc.textFile(file) \
                 .filter(lambda x: x != header) \
                 .mapPartitions(lambda x: csv.reader(x)) \
+                .filter(lambda x: len(x) >= 25) \
                 .map(lambda x: (int(dt.datetime.strptime(x[4], '%m/%d/%Y').year), x[21], x[23], x[24])) \
                 .filter(lambda x: (2015 <= x[0] and x[0] <= 2019)) \
                 .map(lambda x: (x[0], countyname2borocode(x[1]), x[2], x[3])) \
@@ -415,6 +419,7 @@ class TestPySpark:
         res = sc.textFile(','.join(files)) \
                 .filter(lambda x: x != header) \
                 .mapPartitions(lambda x: csv.reader(x)) \
+                .filter(lambda x: len(x) >= 25) \
                 .map(lambda x: (int(dt.datetime.strptime(x[4], '%m/%d/%Y').year), x[21], x[23], x[24])) \
                 .filter(lambda x: (2015 <= x[0] and x[0] <= 2019)) \
                 .map(lambda x: (x[0], countyname2borocode(x[1]), x[2], x[3])) \
@@ -434,7 +439,7 @@ class TestPySpark:
             for year in segment[1]:
                 if year[0] != 'OLS_COEF':
                     count += year[1]
-        assert count == 76
+        assert count == 98
 
     def export_csv(self, output):
         """ Export output in csv format """
@@ -512,6 +517,7 @@ class TestPySpark:
         res = sc.textFile(','.join(files)) \
                 .filter(lambda x: x != header) \
                 .mapPartitions(lambda x: csv.reader(x)) \
+                .filter(lambda x: len(x) >= 25) \
                 .map(lambda x: (int(dt.datetime.strptime(x[4], '%m/%d/%Y').year), x[21], x[23], x[24])) \
                 .filter(lambda x: (2015 <= x[0] and x[0] <= 2019)) \
                 .map(lambda x: (x[0], countyname2borocode(x[1]), x[2], x[3])) \
