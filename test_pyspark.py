@@ -428,7 +428,6 @@ class TestPySpark:
                 .filter(lambda x: int(x[1]) > 0) \
                 .map(lambda x: ((x[1], x[0]), 1)) \
                 .reduceByKey(lambda x, y: x + y) \
-                .sortByKey(True, 1) \
                 .map(lambda x: (x[0][0], [(x[0][1], x[1])])) \
                 .reduceByKey(lambda x, y: x + y) \
                 .mapValues(lambda x: self.fill_zer0(x) + [('OLS_COEF', self.ols(x))]) \
