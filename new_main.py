@@ -27,9 +27,6 @@ def match_house_number(hn_record, segment):
     # exclude single character house numbers
     if len(hn_record) == 1 and (not hn_record.isnumeric()):
         return False
-    # exlude cases like 789A
-    if (hn_record.find('-') == -1) and (not hn_record.isnumeric()):
-        return False
     # if a record is empty, assigns 0
     if len(hn_record) == 0:
         hn_record = 0
@@ -37,7 +34,11 @@ def match_house_number(hn_record, segment):
     # example: '187-09' = 18709 <int>
     # example: '187' = 187 <int>
     else:
-        hn_record = int(hn_record.replace('-', ''))
+        hn_record = re.sub('\s', '-', hn_record)
+        try:
+            hn_record = int(hn_record.replace('-', ''))
+        except ValueError:
+            return False
     # format house numbers in lookup segment in the same way
     # if hn_record is even, we should use 'R'; otherwise, 'L'
     if hn_record%2 == 0:
@@ -109,7 +110,11 @@ def export_csv(output, lookup_table, path):
     # export the resutl as csv
     data = []
     for key in sorted(physicalIDs.keys()):
-        data.append([key] + physicalIDs[key])
+        data.append(tuple([key] + physicalIDs[key]))
+    spark = SparkSession.builder \
+                        .appName('BDA Final Project') \
+                        .master('local') \
+                        .getOrCreate()
     rdd = spark.sparkContext.parallelize(data)
     spark_df = spark.createDataFrame(rdd)
     spark_df.write.csv(path)
@@ -141,7 +146,7 @@ if __name__ == '__main__':
     header_table = table.first()
     # start testing
     lookup = sc.textFile(NYC_CSCL_PATH) \
-               .filter(lambda x: x != header) \
+               .filter(lambda x: x != header_table) \
                .mapPartitions(lambda x: csv.reader(x)) \
                .filter(lambda x: len(x) >= 30) \
                .map(lambda x: (x[0], (x[2], x[3], x[4], x[5], x[10], x[13], x[28]))) \
@@ -169,4 +174,4 @@ if __name__ == '__main__':
             .reduceByKey(lambda x, y: x + y) \
             .mapValues(lambda x: fill_zer0(x) + [('OLS_COEF', ols(x))]) \
             .collect()
-    export_csv(res, LOOKUP_BCAST.value)
+    export_csv(res, LOOKUP_BCAST.value, 'test.csv')
