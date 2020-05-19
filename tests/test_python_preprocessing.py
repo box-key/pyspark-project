@@ -15,14 +15,14 @@ class TestPreprocessing:
         filter out records that didn't happen between 2015 and 2019.
         """
         # load data
-        df = pd.read_csv('test\\violation_small.csv')
+        df = pd.read_csv('data\\violation_small.csv')
         # filter out records not between 2015 and 2019
         df_filtered = df[df['Issue Date'].apply(
                         lambda x: (2015 <= dt.datetime.strptime(x, '%m/%d/%Y').year) and \
                                   (dt.datetime.strptime(x, '%m/%d/%Y').year <= 2019))]
         # does the same thing with csv module
         filtered_samples = []
-        with open('test\\violation_small.csv', 'r') as f:
+        with open('data\\violation_small.csv', 'r') as f:
             file = csv.DictReader(f)
             for row in file:
                 date = dt.datetime.strptime(row['Issue Date'], '%m/%d/%Y')
@@ -79,7 +79,7 @@ class TestPreprocessing:
         records in vioaltion file.
         """
         # load violation records
-        with open('test\\violation_small.csv', 'r') as f:
+        with open('data\\violation_small.csv', 'r') as f:
             file = csv.DictReader(f)
             # only keep records betwen 2015 and 2019
             filtered_records = \
@@ -198,11 +198,11 @@ class TestPreprocessing:
     def test_street_segmentid_lookup(self):
         """ Test street_segmentid_lookup method """
         # load physical ID list
-        with open('data\\nyc_cscl.csv', 'r') as f:
+        with open('nyc_cscl.csv', 'r') as f:
             file = csv.DictReader(f)
             lookup = [row for row in file]
         # load violation records
-        with open('test\\violation_small.csv', 'r') as f:
+        with open('data\\violation_small.csv', 'r') as f:
             file = csv.DictReader(f)
             # only keep records betwen 2015 and 2019
             filtered_records = \

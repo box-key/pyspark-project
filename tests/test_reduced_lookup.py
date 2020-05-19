@@ -128,8 +128,8 @@ from pyspark import SparkContext
 sc = SparkContext()
 
 
-NYC_CSCL_PATH = 'data\\nyc_cscl.csv'
-VIOLATION_PATH = 'test\\*.csv'
+NYC_CSCL_PATH = 'nyc_cscl.csv'
+VIOLATION_PATH = 'data\\*.csv'
 
 
 class TestReadingCSV:
@@ -262,7 +262,7 @@ class TestReadingCSV:
                    .collect()
         LOOKUP_BCAST = sc.broadcast(lookup)
         # do computation
-        file = 'test\\violation_small.csv'
+        file = 'data\\violation_small.csv'
         # to skip header
         data = sc.textFile(file)
         header_data = data.first()

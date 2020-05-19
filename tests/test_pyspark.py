@@ -404,12 +404,12 @@ class TestPySpark:
     def test_reading_multiple_csv(self):
         """ Reading multiple csv files """
         # load lookup table
-        with open('data\\nyc_cscl.csv', 'r') as f:
+        with open('nyc_cscl.csv', 'r') as f:
             file = csv.DictReader(f)
             lookup = [row for row in file]
         # broadcast lookup table
         lookup_bcast = sc.broadcast(lookup)
-        root = 'test'
+        root = 'data'
         files = [os.path.join(root, 'violation_small1.csv'),
                  os.path.join(root, 'violation_small1.csv')]
         # skip headers
@@ -467,7 +467,7 @@ class TestPySpark:
 
     def test_export_csv(self):
         """ Test code blocks for export_csv """
-        with open('data\\nyc_cscl.csv', 'r') as f:
+        with open('nyc_cscl.csv', 'r') as f:
             file = csv.DictReader(f)
             physicalIDs = {}
             temp = []
@@ -502,12 +502,12 @@ class TestPySpark:
     def test_computation_and_export_csv(self):
         """ Compute output and export it to csv """
         # load lookup table
-        with open('data\\nyc_cscl.csv', 'r') as f:
+        with open('nyc_cscl.csv', 'r') as f:
             file = csv.DictReader(f)
             lookup = [row for row in file]
         # broadcast lookup table
         lookup_bcast = sc.broadcast(lookup)
-        root = 'test'
+        root = 'data'
         files = [os.path.join(root, 'violation_small1.csv'),
                  os.path.join(root, 'violation_small1.csv')]
         # skip headers

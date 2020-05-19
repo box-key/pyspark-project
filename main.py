@@ -24,6 +24,10 @@ VIOLATION_PATH = 'hdfs:///data/share/bdm/nyc_parking_violation/*.csv'
 # BOROCODE_IDX = 6
 # FULL_STREE = 7
 #
+## Indices for violation record
+# YEAR = 0
+# SEGMENTID = 1
+#
 ## lookup dictionary
 # {(ST_LABEL, BOROCODE_IDX) : [((R_LOW_HN, R_HIGH_HN), (L_LOW_HN, L_HIGH_HN), PHYSICALID)]} * N +
 # {(FULL_STREE, BOROCODE_IDX) : [((R_LOW_HN, R_HIGH_HN), (L_LOW_HN, L_HIGH_HN), PHYSICALID)]} * N

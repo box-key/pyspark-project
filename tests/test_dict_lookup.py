@@ -13,8 +13,8 @@ import re
 
 sc = SparkContext()
 
-NYC_CSCL_PATH = 'data\\nyc_cscl.csv'
-root = 'test'
+NYC_CSCL_PATH = 'nyc_cscl.csv'
+root = 'data'
 violation_records = [os.path.join(root, 'violation_small1.csv'),
                      os.path.join(root, 'violation_small2.csv')]
 VIOLATION_PATH = ','.join(violation_records)
