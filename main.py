@@ -10,8 +10,8 @@ import re
 import sys
 
 
-NYC_CSCL_PATH = 'hdfs:///data/share/bdm/nyc_cscl.csv'
-VIOLATION_PATH = 'hdfs:///data/share/bdm/nyc_parking_violation/*.csv'
+NYC_CSCL_PATH = 'hdfs:///.../nyc_cscl.csv'
+VIOLATION_PATH = 'hdfs:///.../nyc_parking_violation/*.csv'
 
 
 ## Indices for lookup table
