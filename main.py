@@ -72,7 +72,7 @@ def format_hn(hn_record):
     # if a record is empty, assigns 0
     if len(hn_record) == 0:
         return 0
-    # otherwise concatenate two values together
+    # concatenate two values together
     # example: '187-09' = 18709 <int>
     # example: '187' = 187 <int>
     else:
@@ -181,10 +181,10 @@ if __name__ == '__main__':
             .map(lambda x: (x[0], (x[2], x[3], x[4], x[5], x[10], x[13], x[28]))) \
             .reduceByKey(lambda x, y: x) \
             .map(lambda x: (x[0], x[1][0], x[1][1], x[1][2], x[1][3], x[1][4], x[1][5], x[1][6])) \
-           .collect()
+            .collect()
     lookup = construct_lookup(res)
     LOOKUP_BCAST = sc.broadcast(lookup)
-    # skip headers
+    # read parking violations and skip headers
     data = sc.textFile(VIOLATION_PATH)
     header_data = data.first()
     """ Steps
